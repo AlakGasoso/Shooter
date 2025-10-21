@@ -42,42 +42,50 @@ grenade = False
 grenade_thrown = False
 
 
-#load music and sounds
-#pygame.mixer.music.load('audio/music2.mp3')
+# =======================
+# ÁUDIO (SFX / MÚSICA)
+# =======================
+# Troque aqui se quiser novas trilhas/efeitos
+#pygame.mixer.music.load('audio/music2.mp3')                         # <-- ALTERE AQUI (música de fundo - opcional)
 #pygame.mixer.music.set_volume(0.3)
 #pygame.mixer.music.play(-1, 0.0, 5000)
-jump_fx = pygame.mixer.Sound('audio/jump.wav')
+jump_fx = pygame.mixer.Sound('audio/jump.wav')                       # <-- ALTERE AQUI (som do pulo)
 jump_fx.set_volume(0.05)
-shot_fx = pygame.mixer.Sound('audio/shot.wav')
+shot_fx = pygame.mixer.Sound('audio/shot.wav')                       # <-- ALTERE AQUI (som do tiro)
 shot_fx.set_volume(0.05)
-grenade_fx = pygame.mixer.Sound('audio/grenade.wav')
+grenade_fx = pygame.mixer.Sound('audio/grenade.wav')                 # <-- ALTERE AQUI (som da granada)
 grenade_fx.set_volume(0.05)
 
 
-#load images
-#button images
-start_img = pygame.image.load('img/start_btn.png').convert_alpha()
-exit_img = pygame.image.load('img/exit_btn.png').convert_alpha()
-restart_img = pygame.image.load('img/restart_btn.png').convert_alpha()
-#background
-pine1_img = pygame.image.load('img/Background/pine1.png').convert_alpha()
-pine2_img = pygame.image.load('img/Background/pine2.png').convert_alpha()
-mountain_img = pygame.image.load('img/Background/mountain.png').convert_alpha()
-sky_img = pygame.image.load('img/Background/sky_cloud.png').convert_alpha()
-#store tiles in a list
+# =======================
+# IMAGENS / ARTE
+# =======================
+# Botões do menu
+start_img = pygame.image.load('img/start_btn.png').convert_alpha()   # <-- ALTERE AQUI (imagem do botão START)
+exit_img = pygame.image.load('img/exit_btn.png').convert_alpha()     # <-- ALTERE AQUI (imagem do botão EXIT)
+restart_img = pygame.image.load('img/restart_btn.png').convert_alpha()# <-- ALTERE AQUI (imagem do botão RESTART)
+
+# Background (parallax)
+pine1_img = pygame.image.load('img/Background/pine1.png').convert_alpha()      # <-- ALTERE AQUI (camada 3 do fundo)
+pine2_img = pygame.image.load('img/Background/pine2.png').convert_alpha()      # <-- ALTERE AQUI (camada 4 do fundo)
+mountain_img = pygame.image.load('img/Background/mountain.png').convert_alpha()# <-- ALTERE AQUI (montanhas)
+sky_img = pygame.image.load('img/Background/sky_cloud.png').convert_alpha()    # <-- ALTERE AQUI (céu/nuvens)
+
+# Tiles do solo/parede/etc. (mapa)
 img_list = []
 for x in range(TILE_TYPES):
-	img = pygame.image.load(f'img/Tile/{x}.png')
+	img = pygame.image.load(f'img/Tile/{x}.png')                     # <-- ALTERE AQUI (substitua os tileset 0..20)
 	img = pygame.transform.scale(img, (TILE_SIZE, TILE_SIZE))
 	img_list.append(img)
-#bullet
-bullet_img = pygame.image.load('img/icons/bullet.png').convert_alpha()
-#grenade
-grenade_img = pygame.image.load('img/icons/grenade.png').convert_alpha()
-#pick up boxes
-health_box_img = pygame.image.load('img/icons/health_box.png').convert_alpha()
-ammo_box_img = pygame.image.load('img/icons/ammo_box.png').convert_alpha()
-grenade_box_img = pygame.image.load('img/icons/grenade_box.png').convert_alpha()
+
+# Ícones/Projéteis/Itens
+bullet_img = pygame.image.load('img/icons/bullet.png').convert_alpha()         # <-- ALTERE AQUI (ícone da bala)
+grenade_img = pygame.image.load('img/icons/grenade.png').convert_alpha()       # <-- ALTERE AQUI (ícone da granada)
+
+# Caixas de itens (cura, munição, granada)
+health_box_img = pygame.image.load('img/icons/health_box.png').convert_alpha() # <-- ALTERE AQUI (imagem da caixa de cura)
+ammo_box_img = pygame.image.load('img/icons/ammo_box.png').convert_alpha()     # <-- ALTERE AQUI (imagem da caixa de munição)
+grenade_box_img = pygame.image.load('img/icons/grenade_box.png').convert_alpha()# <-- ALTERE AQUI (imagem da caixa de granadas)
 item_boxes = {
 	'Health'	: health_box_img,
 	'Ammo'		: ammo_box_img,
@@ -160,15 +168,24 @@ class Soldier(pygame.sprite.Sprite):
 		self.idling = False
 		self.idling_counter = 0
 		
-		#load all images for the players
+		# ============================================
+		# SPRITES ESTRUTURADOS POR PASTA / ANIMAÇÕES
+		# ============================================
+		# Para trocar o JOGADOR ou INIMIGOS:
+		# 1) Mantenha a estrutura de pastas:
+		#    img/player/Idle/0.png, 1.png, ...
+		#    img/player/Run/0.png, 1.png, ...
+		#    img/player/Jump/0.png, ...
+		#    img/player/Death/0.png, ...
+		#    img/enemy/Idle/... (mesma ideia)
+		# 2) OU mude o caminho abaixo para sua estrutura.
 		animation_types = ['Idle', 'Run', 'Jump', 'Death']
 		for animation in animation_types:
-			#reset temporary list of images
 			temp_list = []
-			#count number of files in the folder
-			num_of_frames = len(os.listdir(f'img/{self.char_type}/{animation}'))
+			# Conta os frames dentro de cada pasta
+			num_of_frames = len(os.listdir(f'img/{self.char_type}/{animation}'))  # <-- ALTERE AQUI (se mudar a estrutura)
 			for i in range(num_of_frames):
-				img = pygame.image.load(f'img/{self.char_type}/{animation}/{i}.png').convert_alpha()
+				img = pygame.image.load(f'img/{self.char_type}/{animation}/{i}.png').convert_alpha()  # <-- ALTERE AQUI (caminho dos sprites)
 				img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale)))
 				temp_list.append(img)
 			self.animation_list.append(temp_list)
@@ -369,7 +386,7 @@ class World():
 		for y, row in enumerate(data):
 			for x, tile in enumerate(row):
 				if tile >= 0:
-					img = img_list[tile]
+					img = img_list[tile]                                  # (Tiles vêm de img_list configurada lá em cima)
 					img_rect = img.get_rect()
 					img_rect.x = x * TILE_SIZE
 					img_rect.y = y * TILE_SIZE
@@ -383,22 +400,24 @@ class World():
 						decoration = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
 						decoration_group.add(decoration)
 					elif tile == 15:#create player
-						player = Soldier('player', x * TILE_SIZE, y * TILE_SIZE, 1.65, 5, 20, 5)
+						# 'player' indica a pasta img/player/... (troque sprites lá em cima)
+						player = Soldier('player', x * TILE_SIZE, y * TILE_SIZE, 1.65, 5, 20, 5)  # <-- ALTERE AQUI (scale do player se trocar o tamanho)
 						health_bar = HealthBar(10, 10, player.health, player.health)
 					elif tile == 16:#create enemies
-						enemy = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 1.65, 2, 20, 0)
+						# 'enemy' indica a pasta img/enemy/... (troque sprites lá em cima)
+						enemy = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 1.65, 2, 20, 0)   # <-- ALTERE AQUI (scale do inimigo se trocar o tamanho)
 						enemy_group.add(enemy)
 					elif tile == 17:#create ammo box
-						item_box = ItemBox('Ammo', x * TILE_SIZE, y * TILE_SIZE)
+						item_box = ItemBox('Ammo', x * TILE_SIZE, y * TILE_SIZE)                 # (troque arte do item acima)
 						item_box_group.add(item_box)
 					elif tile == 18:#create grenade box
-						item_box = ItemBox('Grenade', x * TILE_SIZE, y * TILE_SIZE)
+						item_box = ItemBox('Grenade', x * TILE_SIZE, y * TILE_SIZE)              # (troque arte do item acima)
 						item_box_group.add(item_box)
 					elif tile == 19:#create health box
-						item_box = ItemBox('Health', x * TILE_SIZE, y * TILE_SIZE)
+						item_box = ItemBox('Health', x * TILE_SIZE, y * TILE_SIZE)               # (troque arte do item acima)
 						item_box_group.add(item_box)
 					elif tile == 20:#create exit
-						exit = Exit(img, x * TILE_SIZE, y * TILE_SIZE)
+						exit = Exit(img, x * TILE_SIZE, y * TILE_SIZE)                           # (tile/arte do "exit" vem de img_list)
 						exit_group.add(exit)
 
 		return player, health_bar
@@ -446,7 +465,7 @@ class ItemBox(pygame.sprite.Sprite):
 	def __init__(self, item_type, x, y):
 		pygame.sprite.Sprite.__init__(self)
 		self.item_type = item_type
-		self.image = item_boxes[self.item_type]
+		self.image = item_boxes[self.item_type]                         # (imagens definidas lá em cima)
 		self.rect = self.image.get_rect()
 		self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
 
@@ -490,7 +509,7 @@ class Bullet(pygame.sprite.Sprite):
 	def __init__(self, x, y, direction):
 		pygame.sprite.Sprite.__init__(self)
 		self.speed = 10
-		self.image = bullet_img
+		self.image = bullet_img                                            # (mude bullet_img lá em cima)
 		self.rect = self.image.get_rect()
 		self.rect.center = (x, y)
 		self.direction = direction
@@ -525,7 +544,7 @@ class Grenade(pygame.sprite.Sprite):
 		self.timer = 100
 		self.vel_y = -11
 		self.speed = 7
-		self.image = grenade_img
+		self.image = grenade_img                                           # (mude grenade_img lá em cima)
 		self.rect = self.image.get_rect()
 		self.rect.center = (x, y)
 		self.width = self.image.get_width()
@@ -583,7 +602,7 @@ class Explosion(pygame.sprite.Sprite):
 		pygame.sprite.Sprite.__init__(self)
 		self.images = []
 		for num in range(1, 6):
-			img = pygame.image.load(f'img/explosion/exp{num}.png').convert_alpha()
+			img = pygame.image.load(f'img/explosion/exp{num}.png').convert_alpha()  # <-- ALTERE AQUI (sprites da explosão)
 			img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale)))
 			self.images.append(img)
 		self.frame_index = 0
@@ -641,7 +660,7 @@ death_fade = ScreenFade(2, PINK, 4)
 
 
 #create buttons
-start_button = button.Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 - 150, start_img, 1)
+start_button = button.Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 - 150, start_img, 1)  # (liga aos PNGs do menu)
 exit_button = button.Button(SCREEN_WIDTH // 2 - 110, SCREEN_HEIGHT // 2 + 50, exit_img, 1)
 restart_button = button.Button(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 50, restart_img, 2)
 
@@ -662,8 +681,12 @@ world_data = []
 for row in range(ROWS):
 	r = [-1] * COLS
 	world_data.append(r)
-#load in level data and create world
-with open(f'level{level}_data.csv', newline='') as csvfile:
+
+# =======================
+# FASE / CSV DO MAPA
+# =======================
+# Troque os CSVs para outros layouts de fase (ou aumente MAX_LEVELS)
+with open(f'level{level}_data.csv', newline='') as csvfile:          # <-- ALTERE AQUI (caminho dos CSVs das fases)
 	reader = csv.reader(csvfile, delimiter=',')
 	for x, row in enumerate(reader):
 		for y, tile in enumerate(row):
@@ -697,11 +720,11 @@ while run:
 		#show ammo
 		draw_text('AMMO: ', font, WHITE, 10, 35)
 		for x in range(player.ammo):
-			screen.blit(bullet_img, (90 + (x * 10), 40))
+			screen.blit(bullet_img, (90 + (x * 10), 40))               # (usa bullet_img lá de cima)
 		#show grenades
 		draw_text('GRENADES: ', font, WHITE, 10, 60)
 		for x in range(player.grenades):
-			screen.blit(grenade_img, (135 + (x * 15), 60))
+			screen.blit(grenade_img, (135 + (x * 15), 60))             # (usa grenade_img lá de cima)
 
 
 		player.update()
@@ -764,7 +787,7 @@ while run:
 				world_data = reset_level()
 				if level <= MAX_LEVELS:
 					#load in level data and create world
-					with open(f'level{level}_data.csv', newline='') as csvfile:
+					with open(f'level{level}_data.csv', newline='') as csvfile:  # <-- ALTERE AQUI (CSV das próximas fases)
 						reader = csv.reader(csvfile, delimiter=',')
 						for x, row in enumerate(reader):
 							for y, tile in enumerate(row):
@@ -780,7 +803,7 @@ while run:
 					bg_scroll = 0
 					world_data = reset_level()
 					#load in level data and create world
-					with open(f'level{level}_data.csv', newline='') as csvfile:
+					with open(f'level{level}_data.csv', newline='') as csvfile:  # <-- ALTERE AQUI (CSV ao reiniciar)
 						reader = csv.reader(csvfile, delimiter=',')
 						for x, row in enumerate(reader):
 							for y, tile in enumerate(row):
