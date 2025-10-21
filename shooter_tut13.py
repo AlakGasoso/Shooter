@@ -18,7 +18,7 @@ pygame.display.set_caption('Shooter')
 clock = pygame.time.Clock()
 FPS = 60
 
-# define game variables
+# game variables
 GRAVITY = 0.75
 SCROLL_THRESH = 200
 ROWS = 16
@@ -32,7 +32,7 @@ level = 1
 start_game = False
 start_intro = False
 
-# define player action variables
+# player action variables
 moving_left = False
 moving_right = False
 shoot = False
@@ -61,32 +61,41 @@ exit_img = pygame.image.load('img/exit_btn.png').convert_alpha()
 restart_img = pygame.image.load('img/restart_btn.png').convert_alpha()
 
 # ---- FUNDO ÚNICO (cidade.png) ----
-# tenta caminhos comuns; ajuste se seu projeto usar outro
 if os.path.exists('img/background/cenário/cidade.png'):
     cidade_img = pygame.image.load('img/background/cenário/cidade.png').convert_alpha()
 elif os.path.exists('img/Background/cidade.png'):
     cidade_img = pygame.image.load('img/Background/cidade.png').convert_alpha()
 else:
-    # fallback para evitar crash se a imagem não existir
     cidade_img = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
 
-# Tiles (mapa)
+# Tiles (mapa) — sempre do tamanho do grid
 img_list = []
 for x in range(TILE_TYPES):
     img = pygame.image.load(f'img/Tile/{x}.png')
     img = pygame.transform.scale(img, (TILE_SIZE, TILE_SIZE))
     img_list.append(img)
 
-# Ícones/Projéteis/Itens
+# Ícones/Projéteis/Itens (padronizar tamanhos)
 bullet_img = pygame.image.load('img/icons/bullet.png').convert_alpha()
 grenade_img = pygame.image.load('img/icons/grenade.png').convert_alpha()
-
 health_box_img = pygame.image.load('img/icons/health_box.png').convert_alpha()
 ammo_box_img = pygame.image.load('img/icons/ammo_box.png').convert_alpha()
 grenade_box_img = pygame.image.load('img/icons/grenade_box.png').convert_alpha()
+
+# --- tamanhos padronizados ---
+BULLET_SIZE  = (10, 10)                       # projétil pequeno
+GRENADE_SIZE = (int(TILE_SIZE * 0.5),) * 2    # granada ~ metade do tile
+BOX_SIZE     = (TILE_SIZE, TILE_SIZE)         # cada caixa ocupa 1 tile
+
+bullet_img  = pygame.transform.scale(bullet_img,  BULLET_SIZE)
+grenade_img = pygame.transform.scale(grenade_img, GRENADE_SIZE)
+health_box_img  = pygame.transform.scale(health_box_img,  BOX_SIZE)
+ammo_box_img    = pygame.transform.scale(ammo_box_img,    BOX_SIZE)
+grenade_box_img = pygame.transform.scale(grenade_box_img, BOX_SIZE)
+
 item_boxes = {
-    'Health': health_box_img,
-    'Ammo': ammo_box_img,
+    'Health':  health_box_img,
+    'Ammo':    ammo_box_img,
     'Grenade': grenade_box_img
 }
 
@@ -106,9 +115,9 @@ def draw_text(text, font, text_col, x, y):
     screen.blit(img, (x, y))
 
 def draw_bg():
-    # pinta fundo base (útil se cidade.png tiver transparência)
+    # pinta fundo base (se cidade.png tiver transparência)
     screen.fill(BG)
-    # desenha a cidade várias vezes na horizontal para permitir scroll
+    # repete a imagem da cidade na horizontal para acompanhar o scroll
     width = cidade_img.get_width()
     height = cidade_img.get_height()
     y = SCREEN_HEIGHT - height  # alinha pela base
@@ -116,7 +125,26 @@ def draw_bg():
     for i in range(tiles):
         screen.blit(cidade_img, ((i * width) - bg_scroll * 0.6, y))
 
-# function to reset level
+# ---------- Loader de animações robusto ----------
+# Lê TODOS os .png na pasta (qualquer nome/quantidade) e usa cooldown por ação.
+ANIM_COOLDOWNS = {'Idle': 150, 'Run': 90, 'Jump': 120, 'Death': 100}
+
+def load_anim_frames(char_type, anim_name, scale):
+    folder = os.path.join('img', char_type, anim_name)
+    frames = []
+    if os.path.isdir(folder):
+        for fname in sorted(os.listdir(folder)):
+            if fname.lower().endswith('.png'):
+                img = pygame.image.load(os.path.join(folder, fname)).convert_alpha()
+                img = pygame.transform.scale(img, (int(img.get_width() * scale),
+                                                   int(img.get_height() * scale)))
+                frames.append(img)
+    if not frames:
+        # garante um frame vazio para não quebrar
+        frames = [pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)]
+    return frames
+
+#function to reset level
 def reset_level():
     enemy_group.empty()
     bullet_group.empty()
@@ -127,7 +155,7 @@ def reset_level():
     water_group.empty()
     exit_group.empty()
 
-    # create empty tile list
+    #create empty tile list
     data = []
     for row in range(ROWS):
         r = [-1] * COLS
@@ -152,32 +180,25 @@ class Soldier(pygame.sprite.Sprite):
         self.jump = False
         self.in_air = True
         self.flip = False
-        self.animation_list = []
+
+        # animações
+        self.anim_names = ['Idle', 'Run', 'Jump', 'Death']
+        self.animation_list = [load_anim_frames(self.char_type, n, scale) for n in self.anim_names]
         self.frame_index = 0
-        self.action = 0
+        self.action = 0  # 0 Idle, 1 Run, 2 Jump, 3 Death
         self.update_time = pygame.time.get_ticks()
-        # ai specific variables
-        self.move_counter = 0
-        self.vision = pygame.Rect(0, 0, 150, 20)
-        self.idling = False
-        self.idling_counter = 0
-        
-        # SPRITES por pasta/anim
-        animation_types = ['Idle', 'Run', 'Jump', 'Death']
-        for animation in animation_types:
-            temp_list = []
-            num_of_frames = len(os.listdir(f'img/{self.char_type}/{animation}'))
-            for i in range(num_of_frames):
-                img = pygame.image.load(f'img/{self.char_type}/{animation}/{i}.png').convert_alpha()
-                img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale)))
-                temp_list.append(img)
-            self.animation_list.append(temp_list)
 
         self.image = self.animation_list[self.action][self.frame_index]
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
         self.width = self.image.get_width()
         self.height = self.image.get_height()
+
+        # ai
+        self.move_counter = 0
+        self.vision = pygame.Rect(0, 0, 150, 20)
+        self.idling = False
+        self.idling_counter = 0
 
     def update(self):
         self.update_animation()
@@ -186,12 +207,12 @@ class Soldier(pygame.sprite.Sprite):
             self.shoot_cooldown -= 1
 
     def move(self, moving_left, moving_right):
-        # reset movement variables
+        #reset movement variables
         screen_scroll = 0
         dx = 0
         dy = 0
 
-        # assign movement variables if moving left or right
+        #assign movement variables if moving left or right
         if moving_left:
             dx = -self.speed
             self.flip = True
@@ -201,19 +222,19 @@ class Soldier(pygame.sprite.Sprite):
             self.flip = False
             self.direction = 1
 
-        # jump
+        #jump
         if self.jump == True and self.in_air == False:
             self.vel_y = -11
             self.jump = False
             self.in_air = True
 
-        # apply gravity
+        #apply gravity
         self.vel_y += GRAVITY
         if self.vel_y > 10:
-            self.vel_y
+            self.vel_y = 10
         dy += self.vel_y
 
-        # check for collision
+        #check for collision
         for tile in world.obstacle_list:
             # x
             if tile[1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
@@ -226,7 +247,7 @@ class Soldier(pygame.sprite.Sprite):
                 if self.vel_y < 0:
                     self.vel_y = 0
                     dy = tile[1].bottom - self.rect.top
-                elif self.vel_y >= 0:
+                else:
                     self.vel_y = 0
                     self.in_air = False
                     dy = tile[1].top - self.rect.bottom
@@ -281,10 +302,7 @@ class Soldier(pygame.sprite.Sprite):
                 self.shoot()
             else:
                 if self.idling == False:
-                    if self.direction == 1:
-                        ai_moving_right = True
-                    else:
-                        ai_moving_right = False
+                    ai_moving_right = self.direction == 1
                     ai_moving_left = not ai_moving_right
                     self.move(ai_moving_left, ai_moving_right)
                     self.update_action(1)
@@ -302,11 +320,19 @@ class Soldier(pygame.sprite.Sprite):
         self.rect.x += screen_scroll
 
     def update_animation(self):
-        ANIMATION_COOLDOWN = 100
-        self.image = self.animation_list[self.action][self.frame_index]
-        if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
+        # cooldown por ação
+        anim_name = self.anim_names[self.action]
+        cooldown = ANIM_COOLDOWNS.get(anim_name, 100)
+
+        frames = self.animation_list[self.action]
+        self.image = frames[self.frame_index]
+
+        # só avança se houver mais de 1 frame
+        if len(frames) > 1 and pygame.time.get_ticks() - self.update_time > cooldown:
             self.update_time = pygame.time.get_ticks()
             self.frame_index += 1
+
+        # loop / fim da animação de morte
         if self.frame_index >= len(self.animation_list[self.action]):
             if self.action == 3:
                 self.frame_index = len(self.animation_list[self.action]) - 1
@@ -335,7 +361,6 @@ class World():
 
     def process_data(self, data):
         self.level_length = len(data[0])
-        # iterate through each value in level data file
         for y, row in enumerate(data):
             for x, tile in enumerate(row):
                 if tile >= 0:
@@ -352,10 +377,10 @@ class World():
                     elif tile >= 11 and tile <= 14:
                         decoration = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
                         decoration_group.add(decoration)
-                    elif tile == 15:  # create player
+                    elif tile == 15:  # player
                         player = Soldier('player', x * TILE_SIZE, y * TILE_SIZE, 1.65, 5, 20, 5)
                         health_bar = HealthBar(10, 10, player.health, player.health)
-                    elif tile == 16:  # create enemies
+                    elif tile == 16:  # enemy
                         enemy = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 1.65, 2, 20, 0)
                         enemy_group.add(enemy)
                     elif tile == 17:  # ammo box
@@ -378,12 +403,13 @@ class World():
             tile[1][0] += screen_scroll
             screen.blit(tile[0], tile[1])
 
+# ---------- Objetos de cenário com alinhamento por grid (topleft) ----------
 class Decoration(pygame.sprite.Sprite):
     def __init__(self, img, x, y):
         pygame.sprite.Sprite.__init__(self)
         self.image = img
         self.rect = self.image.get_rect()
-        self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+        self.rect.topleft = (x, y)
     def update(self):
         self.rect.x += screen_scroll
 
@@ -392,7 +418,7 @@ class Water(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.image = img
         self.rect = self.image.get_rect()
-        self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+        self.rect.topleft = (x, y)
     def update(self):
         self.rect.x += screen_scroll
 
@@ -401,7 +427,7 @@ class Exit(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.image = img
         self.rect = self.image.get_rect()
-        self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+        self.rect.topleft = (x, y)
     def update(self):
         self.rect.x += screen_scroll
 
@@ -409,9 +435,9 @@ class ItemBox(pygame.sprite.Sprite):
     def __init__(self, item_type, x, y):
         pygame.sprite.Sprite.__init__(self)
         self.item_type = item_type
-        self.image = item_boxes[self.item_type]
+        self.image = item_boxes[self.item_type]   # já escalada pra 1 tile
         self.rect = self.image.get_rect()
-        self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+        self.rect.topleft = (x, y)
     def update(self):
         self.rect.x += screen_scroll
         if pygame.sprite.collide_rect(self, player):
@@ -436,7 +462,7 @@ class HealthBar():
         ratio = self.health / self.max_health
         pygame.draw.rect(screen, BLACK, (self.x - 2, self.y - 2, 154, 24))
         pygame.draw.rect(screen, RED, (self.x, self.y, 150, 20))
-        pygame.draw.rect(screen, GREEN, (self.x, self.y, 150 * ratio, 20))
+        pygame.draw.rect(screen, GREEN, (self.x, self.y, int(150 * ratio), 20))
 
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y, direction):
@@ -477,28 +503,39 @@ class Grenade(pygame.sprite.Sprite):
         self.direction = direction
     def update(self):
         self.vel_y += GRAVITY
+        if self.vel_y > 10:
+            self.vel_y = 10
         dx = self.direction * self.speed
         dy = self.vel_y
+
+        # colisões
         for tile in world.obstacle_list:
+            # paredes
             if tile[1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
                 self.direction *= -1
                 dx = self.direction * self.speed
+            # chão/teto
             if tile[1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
                 self.speed = 0
                 if self.vel_y < 0:
                     self.vel_y = 0
                     dy = tile[1].bottom - self.rect.top
-                elif self.vel_y >= 0:
+                else:
                     self.vel_y = 0
                     dy = tile[1].top - self.rect.bottom
+
+        # movimento
         self.rect.x += dx + screen_scroll
         self.rect.y += dy
+
+        # timer explode
         self.timer -= 1
         if self.timer <= 0:
             self.kill()
             grenade_fx.play()
             explosion = Explosion(self.rect.x, self.rect.y, 0.5)
             explosion_group.add(explosion)
+            # dano em área
             if abs(self.rect.centerx - player.rect.centerx) < TILE_SIZE * 2 and \
                abs(self.rect.centery - player.rect.centery) < TILE_SIZE * 2:
                 player.health -= 50
@@ -552,16 +589,16 @@ class ScreenFade():
             fade_complete = True
         return fade_complete
 
-# create screen fades
+# fades
 intro_fade = ScreenFade(1, BLACK, 4)
 death_fade = ScreenFade(2, PINK, 4)
 
-# create buttons
+# buttons
 start_button = button.Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 - 150, start_img, 1)
 exit_button = button.Button(SCREEN_WIDTH // 2 - 110, SCREEN_HEIGHT // 2 + 50, exit_img, 1)
 restart_button = button.Button(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 50, restart_img, 2)
 
-# create sprite groups
+# sprite groups
 enemy_group = pygame.sprite.Group()
 bullet_group = pygame.sprite.Group()
 grenade_group = pygame.sprite.Group()
@@ -571,13 +608,12 @@ decoration_group = pygame.sprite.Group()
 water_group = pygame.sprite.Group()
 exit_group = pygame.sprite.Group()
 
-# create empty tile list
+# world data
 world_data = []
 for row in range(ROWS):
     r = [-1] * COLS
     world_data.append(r)
 
-# FASE / CSV DO MAPA
 with open(f'level{level}_data.csv', newline='') as csvfile:
     reader = csv.reader(csvfile, delimiter=',')
     for x, row in enumerate(reader):
